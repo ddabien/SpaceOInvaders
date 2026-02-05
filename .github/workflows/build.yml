@@ -1,0 +1,73 @@
+name: Build macOS Screensaver
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0.0'
+
+      - name: Verify Swift version
+        run: swift --version
+
+      - name: Create MacOS directory
+        run: mkdir -p SpaceInvadersScreensaver.saver/Contents/MacOS
+
+      - name: Build Universal Binary (Intel + Apple Silicon)
+        run: |
+          swiftc \
+            -target x86_64-apple-macosx13.0 \
+            -target arm64-apple-macosx13.0 \
+            -framework Cocoa \
+            -framework ScreenSaver \
+            -framework WebKit \
+            -emit-library \
+            -o SpaceInvadersScreensaver.saver/Contents/MacOS/SpaceInvadersScreensaver \
+            SpaceInvadersScreensaver.swift
+
+      - name: Verify binary
+        run: |
+          echo "Binary creado:"
+          ls -lh SpaceInvadersScreensaver.saver/Contents/MacOS/
+          echo ""
+          echo "Arquitecturas:"
+          file SpaceInvadersScreensaver.saver/Contents/MacOS/SpaceInvadersScreensaver
+          echo ""
+          echo "Verificando archivos críticos:"
+          test -f SpaceInvadersScreensaver.saver/Contents/Info.plist && echo "✅ Info.plist OK"
+          test -f SpaceInvadersScreensaver.saver/Contents/Resources/index.html && echo "✅ index.html OK"
+          test -f SpaceInvadersScreensaver.saver/Contents/Resources/main.js && echo "✅ main.js OK"
+          test -f SpaceInvadersScreensaver.saver/Contents/Resources/assets/Ship.gif && echo "✅ Ship.gif OK"
+          echo ""
+          echo "Contenido de Resources:"
+          ls -la SpaceInvadersScreensaver.saver/Contents/Resources/
+          echo ""
+          echo "Assets:"
+          ls -la SpaceInvadersScreensaver.saver/Contents/Resources/assets/
+
+      - name: Create ZIP
+        run: |
+          zip -r SpaceInvadersScreensaver.zip SpaceInvadersScreensaver.saver
+          echo ""
+          echo "ZIP creado:"
+          ls -lh SpaceInvadersScreensaver.zip
+
+      - name: Upload Screensaver
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpaceInvadersScreensaver
+          path: SpaceInvadersScreensaver.zip
+          retention-days: 90
